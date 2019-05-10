@@ -1,0 +1,857 @@
+DENGUI PREDICTION WITH DIFFERENT MODELS
+import pandas as pd
+import numpy as np
+from scipy import stats
+from sklearn import datasets, linear_model
+from sklearn.metrics import mean_absolute_error
+DataSets
+E:\uni\tools and techniques\Project\
+x_train = pd.read_csv(r'C:\Users\Shah Rukh\Downloads\dengue_features_train.csv')
+​
+E:\uni\tools and techniques\Project\
+y_train = pd.read_csv(r'C:\Users\Shah Rukh\Downloads\dengue_labels_train.csv')
+x_test = pd.read_csv(r'C:\Users\Shah Rukh\Downloads\dengue_features_test.csv')
+x_train.shape
+​
+(1456, 24)
+y_train.shape
+(1456, 4)
+Check whether dataset contain null value or not
+x_train.columns[x_train.isnull().any()].tolist()
+['ndvi_ne',
+ 'ndvi_nw',
+ 'ndvi_se',
+ 'ndvi_sw',
+ 'precipitation_amt_mm',
+ 'reanalysis_air_temp_k',
+ 'reanalysis_avg_temp_k',
+ 'reanalysis_dew_point_temp_k',
+ 'reanalysis_max_air_temp_k',
+ 'reanalysis_min_air_temp_k',
+ 'reanalysis_precip_amt_kg_per_m2',
+ 'reanalysis_relative_humidity_percent',
+ 'reanalysis_sat_precip_amt_mm',
+ 'reanalysis_specific_humidity_g_per_kg',
+ 'reanalysis_tdtr_k',
+ 'station_avg_temp_c',
+ 'station_diur_temp_rng_c',
+ 'station_max_temp_c',
+ 'station_min_temp_c',
+ 'station_precip_mm']
+x_train.columns[x_train.isnull().any()].tolist()
+​
+​
+['ndvi_ne',
+ 'ndvi_nw',
+ 'ndvi_se',
+ 'ndvi_sw',
+ 'precipitation_amt_mm',
+ 'reanalysis_air_temp_k',
+ 'reanalysis_avg_temp_k',
+ 'reanalysis_dew_point_temp_k',
+ 'reanalysis_max_air_temp_k',
+ 'reanalysis_min_air_temp_k',
+ 'reanalysis_precip_amt_kg_per_m2',
+ 'reanalysis_relative_humidity_percent',
+ 'reanalysis_sat_precip_amt_mm',
+ 'reanalysis_specific_humidity_g_per_kg',
+ 'reanalysis_tdtr_k',
+ 'station_avg_temp_c',
+ 'station_diur_temp_rng_c',
+ 'station_max_temp_c',
+ 'station_min_temp_c',
+ 'station_precip_mm']
+x_test.columns[x_test.isnull().any()].tolist()
+['ndvi_ne',
+ 'ndvi_nw',
+ 'ndvi_se',
+ 'ndvi_sw',
+ 'precipitation_amt_mm',
+ 'reanalysis_air_temp_k',
+ 'reanalysis_avg_temp_k',
+ 'reanalysis_dew_point_temp_k',
+ 'reanalysis_max_air_temp_k',
+ 'reanalysis_min_air_temp_k',
+ 'reanalysis_precip_amt_kg_per_m2',
+ 'reanalysis_relative_humidity_percent',
+ 'reanalysis_sat_precip_amt_mm',
+ 'reanalysis_specific_humidity_g_per_kg',
+ 'reanalysis_tdtr_k',
+ 'station_avg_temp_c',
+ 'station_diur_temp_rng_c',
+ 'station_max_temp_c',
+ 'station_min_temp_c',
+ 'station_precip_mm']
+y_train.columns[y_train.isnull().any()].tolist()
+[]
+Now fill null values with mean of than column
+x_train = x_train.fillna(x_train.mean())
+x_train.columns[x_train.isnull().any()].tolist()
+[]
+x_test = x_test.fillna(x_test.mean())
+x_test.columns[x_test.isnull().any()].tolist()
+[]
+y_train = y_train.fillna(y_train.mean())
+Check the shape of datasets
+x_test.shape
+(416, 24)
+x_train.shape
+(1456, 24)
+y_train.shape
+(1456, 4)
+y_train = y_train['total_cases']
+y_train.shape
+(1456,)
+Columns which are category type convert it into numeric form
+x_train['city'] = x_train['city'].astype('category')
+x_train['city'] = x_train['city'].cat.codes
+x_test['week_start_date'] = x_test['week_start_date'].astype('category')
+x_test['week_start_date'] = x_test['week_start_date'].cat.codes
+x_test['city'] = x_test['city'].astype('category')
+x_test['city'] = x_test['city'].cat.codes
+x_train['week_start_date'] = x_train['week_start_date'].astype('category')
+x_train['week_start_date'] = x_train['week_start_date'].cat.codes
+x_test.head()
+city	year	weekofyear	week_start_date	ndvi_ne	ndvi_nw	ndvi_se	ndvi_sw	precipitation_amt_mm	reanalysis_air_temp_k	...	reanalysis_precip_amt_kg_per_m2	reanalysis_relative_humidity_percent	reanalysis_sat_precip_amt_mm	reanalysis_specific_humidity_g_per_kg	reanalysis_tdtr_k	station_avg_temp_c	station_diur_temp_rng_c	station_max_temp_c	station_min_temp_c	station_precip_mm
+0	1	2008	18	0	-0.01890	-0.018900	0.102729	0.091200	78.60	298.492857	...	25.37	78.781429	78.60	15.918571	3.128571	26.528571	7.057143	33.3	21.7	75.2
+1	1	2008	19	1	-0.01800	-0.012400	0.082043	0.072314	12.56	298.475714	...	21.83	78.230000	12.56	15.791429	2.571429	26.071429	5.557143	30.0	22.2	34.3
+2	1	2008	20	2	-0.00150	0.126803	0.151083	0.091529	3.66	299.455714	...	4.12	78.270000	3.66	16.674286	4.428571	27.928571	7.785714	32.8	22.8	3.0
+3	1	2008	21	3	0.12605	-0.019867	0.124329	0.125686	0.00	299.690000	...	2.20	73.015714	0.00	15.775714	4.342857	28.057143	6.271429	33.3	24.4	0.3
+4	1	2008	22	4	0.05680	0.039833	0.062267	0.075914	0.76	299.780000	...	4.36	74.084286	0.76	16.137143	3.542857	27.614286	7.085714	33.3	23.3	84.1
+5 rows × 24 columns
+
+Scaled the data to check if it gives accuracy or not
+from sklearn import preprocessing
+standardize_x_train = preprocessing.scale(x_train)
+C:\Users\Shah Rukh\Anaconda3\lib\site-packages\ipykernel_launcher.py:2: DataConversionWarning: Data with input dtype int8, int16, int64, float64 were all converted to float64 by the scale function.
+  
+standardize_x_test = preprocessing.scale(x_test)
+C:\Users\Shah Rukh\Anaconda3\lib\site-packages\ipykernel_launcher.py:1: DataConversionWarning: Data with input dtype int8, int16, int64, float64 were all converted to float64 by the scale function.
+  """Entry point for launching an IPython kernel.
+Import the file where we have to replace our predicted values
+E:\uni\tools and techniques\Project\
+testFile = pd.read_csv(r'C:\Users\Shah Rukh\Downloads\submission_format.csv')
+testFile.head()
+city	year	weekofyear	total_cases
+0	sj	2008	18	19
+1	sj	2008	19	7
+2	sj	2008	20	13
+3	sj	2008	21	18
+4	sj	2008	22	13
+GRADIENT DESCENT CLASSIFIER
+With standardize datasets
+E:\uni\tools and techniques\Project\
+from sklearn.ensemble import GradientBoostingClassifier
+​
+gbc = GradientBoostingClassifier(n_estimators=30, max_depth = 10, random_state = 1)
+gbc.fit(standardize_x_train,y_train)
+y_predict = gbc.predict(standardize_x_test)
+y_predict = y_predict.astype('int64')
+testFile['total_cases'] = y_predict
+export_excel = testFile.to_csv(r'C:\Users\Shah Rukh\Downloads\submission_format.csv',index=None,header=True)
+y_predict
+array([ 37,  31,  18,   3,  53,  19,   8,  18,  12, 128,   6,  28,  13,
+        13,  23,  21,  44,  21,  23,  16,  71,  66,  23,  71, 129,   8,
+        56,  23,  65,   9,  26,  20,  17,  19,  27,   9,  26,  50,  38,
+         7,  18,  20,  11,  11,  11,  23,   8,   2,  20,  18,  75,  37,
+        18,  19,  12,   8,  18,  48,  20,  20,  21,   7,  14,   8,   4,
+         4,  19,  13,  11,   5,  20,   4,  14,  11,  30, 101,   2,  31,
+        14,  16,  26,  20,  11,  11,  23,  22,  20,  59,  50,   4,   7,
+        16,  29,   7,  14,  75,  19,  43,  31,  16,  14,   6,  11,   4,
+        31,  31,  35,  21,  11,   7,   7,  64,  10,  75,  28,  14,  16,
+        99,  28,  33,   6,   2,  14,   2,  20,  21,   4,  11,  17,  54,
+        17,  16,  30,  30,  13,  29,  24,  11,   9,  20,  12,  75,  14,
+        37,   8,   0,   0,   4,  14,  20,  16,  15,   4,  20,  15,  11,
+        20,  11,  11,  43,  25,  14,   7,   7,  27,   7,   7,  11,   7,
+         7,   7,   7, 127,   7,   7,  27,   7,   7,  25, 102,   2,  44,
+         6,  26,   3,  34,  85,   6,  42,  11,   3,  13,  13,   6,   6,
+        11,   6,   6,  12,  65,   7,   5,   7,  11,   1,   3,   3,   3,
+         3,   6,  11,  11,   2,   2,   9,  33, 381,  26,  33,   4,  13,
+        25,  14,  26,  27,  27,   2,  28,  17,   2,  33,  12,  16,  18,
+        38,  11,  27, 128,   7,  21,   2,   1,   1,  20,  10,  77,   8,
+         2,   6,  22,   6,  11,  37,  55,   2,  13,   3,  22,   6,   3,
+         0,   0,   0,   4,   0,   0,   0,   0,   0,   0,   0,   1,   0,
+         0,  18,   0,   1,  30, 220,   9,   0,   1,  23,   2,   2,   9,
+        26,   2,  10,   4,  11,   0,   5,   1,   0,   2,   0,   1,   0,
+        11,   0,   0,   4,   0,   0,   2,   7,  12,   7,  23,   7,   3,
+         5,  38,   4,   4,   6,   3,   2,   5,   2,   3,   2,   0,   3,
+         3,   6,   0,   2,  45,   2,   0,   2,   6,   2,   6,   0,   0,
+        32,  91,   6,   6,   6,   6,   6,  12,   6,  37,  23,   6,   6,
+         6,  21,   6,   6,  65,   6,   0,   3,   2,   1,   2,   6,   2,
+         6,   2,   2,   3,   0,   2,   2,  14,   3,   0,   2,   2,   2,
+        11,   6,   5,   2,   6,  16,   2,   7,   6,  13,   5,   5,   5,
+         9,   6,   2,   9,   4,   0,   6,   6,   6,   8,   9,  11,   5,
+        12,  29,   6,   5,   5,   0,   3,   6,   0,   6,   2,  12,   0],
+      dtype=int64)
+Without standardize datasets
+from sklearn.ensemble import GradientBoostingClassifier
+​
+gbc = GradientBoostingClassifier(n_estimators=30, max_depth = 10, random_state = 1)
+gbc.fit(x_train,y_train)
+GradientBoostingClassifier(criterion='friedman_mse', init=None,
+              learning_rate=0.1, loss='deviance', max_depth=10,
+              max_features=None, max_leaf_nodes=None,
+              min_impurity_decrease=0.0, min_impurity_split=None,
+              min_samples_leaf=1, min_samples_split=2,
+              min_weight_fraction_leaf=0.0, n_estimators=30,
+              n_iter_no_change=None, presort='auto', random_state=1,
+              subsample=1.0, tol=0.0001, validation_fraction=0.1,
+              verbose=0, warm_start=False)
+y_predict = gbc.predict(x_test)
+y_predict
+array([129,   5, 129,   3,   6,  12,   8,  12,   2,   8,   8,  28,  54,
+        23,  23,  21,  21,  21,  23,  68,  68,  17,  17,  52,   2,  52,
+        57,  52,  53,  56,  53,  34, 108, 108,  27,  24,  17,  23,   4,
+         7,  23,  15,  12,   9,  11,   1,  17,  24,  11,  17,  15,  37,
+         8,  24,  12,   4,  10,  15,  21,  11,  24,  23,  23,  12,  23,
+        33,  23,  23,  23,  66,  40,  12,  21,  23,  24,  23,  40,  23,
+        31,   5,  36,  21,  48,  10, 108,  22,  21,  24,  11,  18,  12,
+         8,  20,  26,  38,  18,  33,  72,  31,  11,  34,   7,  31,  18,
+        11,  23,  15,  26,  23,  10,  23,  28,   3,  22,  23,  23,  30,
+        17,  23,  23,  23,  19,  18,  24,  23,  21,  71,  23,  71,  17,
+        71,   3,  29,  11,   3,  60,  53,   3,  17,  47,  12,  75,  14,
+        14,  34,  16,  36,  18,  27,  24,   3,  11,  31,  18,   2,   8,
+         6,  10,  11,  11,  11,  12,  11,  19,   6,   6,  99,  15,  11,
+        23, 127,  15,  10,  19,  31,  27,  15,   2,  25,  17,  10,  71,
+        21,  71,  34,  11,  85,  15,  47, 141,  17,  27,  10,  18,  35,
+         8,  33,  22,  36,  70,  12,   7,  33,  11,  23,  34,  18,   6,
+         8,   9,   4,  11,   8,   2,  12,  33,   7,  26,  40,   6,   5,
+         5,   5,  27,  10,  12,   2,  54,  40,  12,  33,  12,  16,  27,
+        27,  11,  34,   3,  31,   3,  23,  31,  17,  15,  16,   3,  30,
+         7,  30,  22,  18,  15,  37,  11,   2,  37,   3,   4,  31,  11,
+        24,  24,  24,  24,  24,   0,  19,  19,  59,  24,  24,   1,  24,
+        24,  24,  24,  24,  24,  24,  24,  24,  24,  24,  24,  24,  24,
+        24,  26,  24,  24,  24,  24,  24,  24,  24,  24,  24,  24,  24,
+        24,  24,  24,   4,   3,  24,  24,  24,  24,  24,  24,  24,  24,
+        24,  38,  19,  24,  24,  19,  19,  24,  19,  24,  19,  24,  24,
+        24,  24,  24,  24,  24,  24,  24,  24,  24,  24,  24,  19,  24,
+        24,  14,  24,  24,  24,  24,  24,  24,  24,  33,  24,  24,  24,
+        24,  24,  24,  24,  24,  24,  24,  24,  24,  24,  19,  24,  24,
+        24,  19,  24,  24,  24,  24,  19,   0,  24,  24,   4,  24,  19,
+        24,  24,  24,  24,  24,  24,  24,  24,  19,  24,  24,  24,  24,
+        24,  38,  24,  24,  24,  24,  24,  24,  24,  24,  24,  24,  24,
+        24,  24,  24,  24,  18,  24,  24,  24,  24,  24,  24,  24,  24],
+      dtype=int64)
+Without standardize datasets with increased hyperparameters
+E:\uni\tools and techniques\Project\
+from sklearn.ensemble import GradientBoostingClassifier
+​
+gbc = GradientBoostingClassifier(n_estimators=32, max_depth = 15, random_state = 1)
+gbc.fit(x_train,y_train)
+y_predict = gbc.predict(x_test)
+testFile['total_cases'] = y_predict
+export_excel = testFile.to_csv(r'C:\Users\Shah Rukh\Downloads\submission_format.csv',index=None,header=True)
+y_predict
+array([129,   5,  19,   3,   6,  12,   6,   6,  14,   6,  18,  11,   2,
+         5,  13,  14,  12,  13,  23,   2,  13,  17,  17,   4,   4,  12,
+        57,   3,   9,  56,  47,  34,  17, 108,  14,  31,  17,  33,  12,
+         7, 142,   6,  29,   5,  11,   5,   5,   8,  29,  16,  17,  16,
+         8,   2,  30,  30,  10,  15,  21,   5, 142,   5,   5,  12,  17,
+        61,   5,  55,  23,   5,  31,  12,  20,  92,   4,  23,   3,  22,
+         5,   5,  36,  18, 169,  19, 108,  33,  12, 112,  11,   6,   1,
+         6,  20,  11,  16,   4,   5,   0,  36,  10,   4,   6,  31,   2,
+        12,  53,   0,  20,  21,  17,  10,  30,  10,  14,   7,  23,  16,
+        17,   5,   4,  18,   3,  12,  14,  15,   4,   5,  23,   5,  33,
+        30,   3,  17,  12,   3,  60,  21,   3,  17, 112,  12,  33,  14,
+        14,  31,  11,   9,   6,  11,  22,   8,  11,   4,   0,   9,   6,
+        11,  10,  11,  10,  12,  12,  25,  17,  10,  10,   4,  15,  13,
+        26,  20,  15,  10,  10,  31,  10,  10,  17,  30,  30,  10,   8,
+        30,  23,  33,  11,  85,  15, 288,  30,  14,  31,  10,  33,   8,
+        33,   5,  22,   9,  29,  33,   7,   5,   3,   5,  30,  18,   6,
+         9,   9,   4,   3,   4,   2,  10,  31,   7,   1,  40,   6,   5,
+         5,   5,  27,  10,  12,  14,  30,   4,  12,  12,  12,  11,  27,
+        30,  12,  10,  30,  31,   3,  17,  11,  17,   3,   8,   3,  11,
+         6,   4,  22,   4,   9,   1,  11,   2,   8,   8,  20,   3,  30,
+        18,   4,   1,  18,  18,   0,  18,  18,  18,  18,  18,   1,   0,
+         0,   0,   0,  18,  18,   9,  17,   9,   9,   1,  18,   9,   9,
+        36,  11,  18,  18,  18,  18,  11,   1,  18,   2,   1,  18,  18,
+        18,   0,   0,   2,   1,   0,  11,   7,   4,  11,  30,   1,   2,
+         1,   2,  11,  12,  18,  18,  18,  18,  18,  18,  18,  83,  17,
+        17,  17,   0,   2,  17,  19,  18,   0,  18,   2,  18,   8,   0,
+         0,   2,  35,  18,  18,   4,   3,   1,   7,  33,   0,   4,  18,
+         0,  18,   0,   0,   0,   0,   4,  17,  11,   4,   7,  11,   1,
+         2,  11,   2,   4,   8,   4,   4,   0,  35,   0,  17,  17,   2,
+         0,  83,   0,   0,   0,   0,   2,   9,   1,   2,   1,   0, 204,
+        10,  38,   4,   0,   0,   0,   9,   4,  17,  25,  11,  11,  16,
+        11,   0,   0,   9,  17,  17,   0,  26,   0,   1,  11,  17,   4],
+      dtype=int64)
+Without standardize datasets with increased hyperparameters
+E:\uni\tools and techniques\Project\
+from sklearn.ensemble import GradientBoostingClassifier
+​
+gbc = GradientBoostingClassifier(n_estimators=50,max_depth =25 , random_state = 0)
+gbc.fit(x_train,y_train)
+y_predict = gbc.predict(x_test)
+testFile['total_cases'] = y_predict
+export_excel = testFile.to_csv(r'C:\Users\Shah Rukh\Downloads\submission_format.csv',index=None,header=True)
+y_predict
+array([  5,   5,   3,   3,   6,   6,   6,   6,   6,   6,  18,   6,   2,
+         5,  13,  31,  12,  15,  23,   2,  13,  18,  17,  52,   0,  12,
+        52,   3,  53,  56,  53, 142,  17,  33,  14,  21,  17,   0,  33,
+         7, 142,   0,  29,   0,   7,   5,  25,   8,   6, 142,  11,  37,
+         0,  12,   4,  30,   4,  15,  21,   5,  14,   5,   5,  12,  17,
+        33,   5,  55,  16,   5,  40,  12,   9,   5,  23,   4,   3,  30,
+         5,   5,  36,  16,  48,  19,  17,  22,  17,  30,   4,   0,   1,
+        10,  20,   7,  16,   0,  16,   0,  31,   9,   4,   4,   0,   0,
+         3,  53,   0,  21,  21,   7,  10,   4,   3,   6,   7,   4,  12,
+        17,   5,   5,  18,  26,   9,   2,  15,  42,  71,  23,   2,  33,
+         3,   3,  17,   3,   3,  60,  47,   3,  17,  29,   5,  75,  14,
+        31,  31,   0,   9,  13,   2,  36,   2,   0,  31,   0,   0,   0,
+         6,   6,   4,  10,  31,   4,   2,   1,   5,   6,  12,   6,  68,
+        27,  48,  15,  34,   1,  26,  10,   4,  17,  25,  10,  10,  23,
+        21,  23,  30,   3,  85,   0,  47,   0,  17,  31,  50,   0,   8,
+         0,   0,   0,   9,   4,  33,   7,  31,  15,   5,  30,  18,   0,
+         0,   9,   0,   2,   4,   2,  10,   8,   7,   5,  33,   6,   5,
+         5,   5,  27,  13,  10,  14,  30,   5,   5,   5,   4,   0,  27,
+        30,  12,  10,  30,  16,   3,  23,   3,  17,   3,   8,   3,   0,
+         7,   0,   0,   4,   9,   1,  11,   2,   8,   3,  10,   2,  30,
+         0,   0,  18,  18,  18,   0,  11,  18,  18,  17,  18,   0,   0,
+         0,   0,   0,   0,  18,   4,   4,   0,   9,   2,   9,  18,  18,
+        36,  17,  18,  18,  18,   4,  18,  18,  18,   2,   0,  17,   9,
+         0,   0,   0,   0,  18,   0,   0,   1,   2,   0,   0,  36,   0,
+         1,   1,   0,  17,   2,  17,  18,  18,  18,  18,  18,   0,   0,
+        17,  17,   0,   2,   0,   0,  18,   0,  18,   2,  18,   8,   0,
+         0,   0,  35,  17,  18,   0,   0,  17,   7,  33,   0,   0,  18,
+         0,  18,   0,   0,  10,   0,   0,  17,   0,   1,   0,  29,  17,
+         2,   0,   2,   4,   8,   0,   0,   0,  17,   0,   0,  17,  17,
+         0,  31,   0,   0,   0,   0,   0,  17,   1,   2,  31,  17,  17,
+         4,  38,   0,   0,  17,   0,   0,   0,  17,   9,  11,  11,  17,
+         0,   0,   0,   9,   5,   0,   0,  26,  17,  17,   0,  17,   0],
+      dtype=int64)
+y_predict.shape
+(416,)
+RANDOM FOREST CLASSIFIER
+Without standardize datasets
+from sklearn.ensemble import RandomForestClassifier
+regr = RandomForestClassifier(max_depth=20, random_state=0,n_estimators=100)
+regr.fit(x_train,y_train)
+RandomForestClassifier(bootstrap=True, class_weight=None, criterion='gini',
+            max_depth=20, max_features='auto', max_leaf_nodes=None,
+            min_impurity_decrease=0.0, min_impurity_split=None,
+            min_samples_leaf=1, min_samples_split=2,
+            min_weight_fraction_leaf=0.0, n_estimators=100, n_jobs=None,
+            oob_score=False, random_state=0, verbose=0, warm_start=False)
+E:\uni\tools and techniques\Project\
+predict = regr.predict(x_test)
+testFile['total_cases'] = predict
+export_excel = testFile.to_csv(r'C:\Users\Shah Rukh\Downloads\submission_format.csv',index=None,header=True)
+predict
+array([  3,   4,   1,   3,  17,   4,   4,   5,   6,   6,   2,   2,  14,
+         5,  27,  14,  27,  21,  42,  20,   7,   4,  14,   6,  33,  26,
+        13,  30,   6,   6,  23,   3,   8,   8,  27,  81,   9,  26,  17,
+        17,  17,  20,   4,  17,   3,   7,  17,   1,   3,   3,  17,   3,
+        17,   3,   3,  17,   2,   6,   7,  20,  16,   9,  14,  14,  14,
+        11,  60,  14,  14,  24,  13,   9,   7,  14,  14,  25,  24,  35,
+        13,   6,   6,  18,   2,   8,  30,  40,  17,  30,  10,   7,  10,
+        17,   9,  14,  17,   3,   4,   7,  11,   8,   2,   6,  17,  13,
+        16,  13,   2,   6,  14,  23,  11,  14,  18,  16,  21,  35,  11,
+        23,  14,  24,  75,  24,  24,   4,  21,  42,  20,  31,  42,   6,
+         9,   5,  34,  12,  13,   6,   3,   6,  17,  17,  15,  10,  22,
+        14,  14,  17,  17,  17,   6,   7,   2,   3,  11,   7,   3,   8,
+         5,  17,   3,   4,  23,   7,   3,  14,  59,   4,  14,   4,   7,
+        18,  18,  26,  27,  42,   2,   7,  42,  30,  27,   6,  27,  38,
+        30,   5,  20,  30,  85,  15,   8,   3,  17,  29,  26,  11,   9,
+         9,   9,   7,   9,   9,   6,   7,  13,   3,   3,   7,   5,   4,
+         3,   2,   3,  10,   2,   8,  11,  11,   7,  11,   9,  14,   9,
+        18,   9,  27,  23,   7,  25,  34, 112,  25,  33,  27,  16,  18,
+        27,  35,  27,  10,  16,  30,  15,  17,  17,  11,  17,   9,   6,
+        17,   3,   7,  31,   6,   3,   6,   3,   7,   4,   8,   2,   7,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0],
+      dtype=int64)
+Without standardize dataset with increased hyperparameters
+E:\uni\tools and techniques\Project\
+regr = RandomForestClassifier(max_depth=30, random_state=0,n_estimators=130)
+regr.fit(x_train,y_train)
+predict = regr.predict(x_test)
+testFile['total_cases'] = predict
+export_excel = testFile.to_csv(r'C:\Users\Shah Rukh\Downloads\submission_format.csv',index=None,header=True)
+predict
+array([  4,   4,   4,   3,   3,  16,   4,   5,   2,   6,  25,  28,   2,
+         5,  27,  28,   2,  21,  31,  20,  14,  30,   2, 112,  33,  26,
+         2,  30,   2,  30,  29,   7,  15,  17,  17,  81,   7,  26,   7,
+         7,   6,  20,   6,   3,   6,   3,   2,   3,   2,   6,   3,   6,
+         8,   3,   3,   3,   2,   6,   6,  14,  14,  31,   7,  14,  14,
+         7,  16,   7,  31,  24,  40, 127,  40,  20,  33,  33,   2,  35,
+        13,  68,  48,  20,  29,   2,  48,   3,  17,  59,  17,   6,  10,
+         7,   9,   9,   8,   6,   5,   7,   7,   8,   7,   7,   7,   2,
+        16,  13,   6,   6,   3,  23,   5,   2,  23,   3,  21,  10,  23,
+        23,  17,  31,  31,  19,  31,  31,  27,  73, 127,  31,   2,  65,
+        13,   2,  34,  12,  29,  13,   3,   6,  17,  17,  28,  16,  22,
+        17,  17,   7,   6,   6,   2,   6,   2,   3,   5,   2,   7,  16,
+         3,   3,   3,   3,   3,   3,   3,  19,   6,  18,  16,   3,  11,
+        25,  18,  16,   6, 204,  25,  27,  73,  25,  27,   6,  27,  43,
+         2,  25,  20,  30,  17,  15,  15,  11,  17,  17,  15,  26,   7,
+         9,   6,  18,   6,  18,   6,   6,   6,   3,   3,   7,   7,  19,
+         3,   4,   3,   7,   2,   7,   9,  31,  12,  11,   9,  14,  18,
+        18,  17,  18,   7,   7,  10,  33,   6,   7,  33,  27,  73, 127,
+         2,  17,   9,  14,  25,  46,  28,  17,  17,   7,  15,  15,   6,
+         7,  18,   9,  31,   3,   3,   6,   3,   5,   3,   5,   8,   3,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0],
+      dtype=int64)
+With standardize dataset
+E:\uni\tools and techniques\Project\
+regr = RandomForestClassifier(max_depth=30, random_state=0,n_estimators=100)
+regr.fit(standardize_x_train,y_train)
+predict = regr.predict(standardize_x_test)
+testFile['total_cases'] = predict
+export_excel = testFile.to_csv(r'C:\Users\Shah Rukh\Downloads\submission_format.csv',index=None,header=True)
+print(predict)  //29.4094
+[  4   4   4   4   4   4   6  18  14  14   6  31  28  17  23  12  28  21
+  31  20  14  17  26 129 140 116  43  30 140 116  28  27  17  17  27  81
+  13  17   6  26  37  26  23  18  23  23  23  12  21  24   5   6  17  31
+  17  17  22  31  31  16  89  31  11  31  25   9  25  89  23  31  40 127
+  40  14  31  31  42  31   9  89  17  36  36  31  17   4  17  59  17  17
+  17  14  31  14  17  75   4   5  37   8   8   8  15  14   7  48   7   6
+   7  23  11 128  14 102  42  59   7 191  25  31 329  31  24  24  48  21
+  73  56  68  24  89  30  24  30  30  17  27  30  17  17  12   7   7   7
+  14  13   6  18   6   6   3   3   7  11   6  12   7   7   3   1   3  10
+   3   4   1   3  10   5   7  18   7  26   6   4   7   4   7   7   9   6
+  20   5  10   9   7  13  29  15   6   6   6   8   7   8  10  20   7  11
+   3   7   7   3   3   3   3   3   7  19   3   7   3  10   2   7  13  10
+  26  11  13   4  14   7  13  10   7   7  18  11  13  34  33   4  16   4
+  10  17  13  10   7  26  22  12  17   6  10   1   3   3   3   3   3   3
+   3   2   3   3   1   8   3   3   0   0   0   0   0   0   0   0   0   0
+   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0
+   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   2
+   1   6   1   6   4   1   1   1   0   0   0   5   0   7   0   0   0   0
+   0   6   0   0   5   0   3   0   2   2   2   2  13   2   5   1   5   6
+   3   6   7   6  23   6   6   1   5   6   5   9   6   5   5   1   3   1
+   2   2   2   2   2   2   3   0   3   0   2   5   2   2   6   0   2   5
+   0   6   0   6   5   5   5   0   2   5   5   2   4   1   1   9   6   2
+   6  12   6   6   9   5   5   5   2   4   0   7   2   2   1   5   2   1
+   2   3]
+---------------------------------------------------------------------------
+TypeError                                 Traceback (most recent call last)
+<ipython-input-42-04806892723c> in <module>
+      4 testFile['total_cases'] = predict
+      5 export_excel = testFile.to_csv(r'C:\Users\Shah Rukh\Downloads\submission_format.csv',index=None,header=True)
+----> 6 print(predict)  //29.4094
+
+TypeError: unsupported operand type(s) for //: 'NoneType' and 'float'
+
+E:\uni\tools and techniques\Project\
+regr = RandomForestClassifier(max_depth=50, random_state=0,n_estimators=100)
+regr.fit(x_train,y_train)
+predict = ct(x_test)
+testFile['total_cases'] = predict
+export_excel = testFile.to_csv(r'C:\Users\Shah Rukh\Downloads\submission_format.csv',index=None,header=True)
+print(predict)
+RANDOM FOREST REGRESSOR
+With standardize datasets
+E:\uni\tools and techniques\Project\
+ from sklearn.ensemble import RandomForestRegressor
+regr = RandomForestRegressor(max_depth=30, random_state=0,n_estimators=100)
+regr.fit(standardize_x_train,y_train)
+predict = regr.predict(standardize_x_test)
+predict = predict.astype('int64')
+testFile['total_cases'] = predict
+export_excel = testFile.to_csv(r'C:\Users\Shah Rukh\Downloads\submission_format.csv',index=None,header=True)
+print(predict)
+DECISION TREE CLASSIFIER
+Without standardize datasets
+from sklearn.tree import DecisionTreeClassifier
+clf = DecisionTreeClassifier(random_state=0,max_depth = 15)
+clf.fit(x_train,y_train)
+clf.predict(x_test)
+array([  5,   5,   5,   5,   5,   5,   5,   5,   8,   8,  29,  17,   6,
+         8, 329,  76,  21,  21,  31,  29,  20,  20,  32,  20,  29,  20,
+        20,  32,  20,  20,  20, 141,  25,  17,  27,  81,  13,  46,  22,
+        46,  35,  26,  22,  26,  23,  10,  17,   8,  17,  17,  17,   8,
+         8,   8,  10,  10,  18,  24,  18,  18,  14,  16,  14,   6,  24,
+        13, 329,  76,  21,  24,  40,  20,  20,  30,  24,  31,  31,  46,
+       140, 140,  34,  34,  36,  76,  36, 129,  46,  59,  65,  22, 104,
+        22,  35,  17,  81,  35,  22,  37,  24,   6,  16,   6,  24,  13,
+        18,   6,  24,  13,  14,  18,  14,  17,  20,  20,  24,  14,  18,
+        17,  17,  19,  76,  24,  24,  24,  27,  27,  36,  36,  29,  29,
+        36,  32,  34,  32,  46,  17,  26,  32,  47,  29,  28, 104,  13,
+        31,  31,  35,  22,  31,  36,   6,  29,  59,   6,  14,   6,  16,
+         6,  10,  26,  28,  23,  20,  17,  19,  14,  14,  14,  13,  18,
+        14,  14,  26,  21,  76,  26,  27,  27,  36,  27,  27,  27,  30,
+        30,  36,  76,  32,  30,  32,  17,  53,  67,  56,  22,  46,  31,
+        36,  32,  26,  35,  13,  31,   6,  24,  30,  10,  23,   6,  15,
+        24,  24,  10,  18,  31,  31,  31,  31,  38,  49,  49,  38,  38,
+        38,  49, 329,  76,  76,  21,  27,  31,  31,  31,  27,  27,  27,
+        27,  31,  27,  32,  36,  32,  36,  32,  46,  35,  35,  35,  31,
+        37,  46,  26,  24,  68,   5,  15,   6,   5,  15,   2,   5,   5,
+         0,   0,   0,   1,   0,   0,   0,   0,   0,  24,   1,   0,   0,
+         0,  24,   0,   0,  24,  24,   0,   0,  24,  24,  24,  24,  24,
+        24,   0,  17,   0,   0,   0,   0,  17,   0,  17,   0,   0,  30,
+         0,   0,   0,   0,   0,   0,   0,   1,   0,   0,   0,   0,   0,
+         0,   0,   0,   1,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,  24,   1,   0,   0,   0,  24,  24,  24,   1,   1,
+         1,   0,   0,   0,   0,   0,  81,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   1,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   1,   0,   0,   0,   1,   0,   0,   0,   0,
+         0,   0,  24,   0,   0,   0,   0,  24,  59,  24,  24,  24,  24,
+        17,   0,   0,   0,   1,   0,   0,  17,   0,  11,  11,  11,  11,
+        11,   0,   0,   0,   0,   0,   0,   0,   1,   0,   0,   1,   0],
+      dtype=int64)
+Without standardize datasets with increased hyperparameters
+E:\uni\tools and techniques\Project\
+from sklearn.tree import DecisionTreeClassifier
+clf = DecisionTreeClassifier(random_state=0,max_depth = 35)
+clf.fit(x_train,y_train)
+predict = clf.predict(x_test)
+testFile['total_cases'] = predict
+export_excel = testFile.to_csv(r'C:\Users\Shah Rukh\Downloads\submission_format.csv',index=None,header=True)
+print(predict)
+array([  5,   5,   7,   5,   5,   5,   5,   7,   5,   7,  16,  16,  16,
+         5,  23,  76,  23,  23,  33,  61,  89,  43,  31,  20,  61,  43,
+        43,  43,  43,  43,  43,  53,  29,  17,  27,  81,  56,  21,  31,
+        21,  35,  26,  55,  26,   5,   6,  16,  16,   7,   5,   5,   5,
+         5,   5,   6,   6,   2,  16,   5,   5,  15,  16,   7,  15,  16,
+         2, 179,  60,  60,  24,  40,  68,  68,  31,  40,  33,  33,  64,
+       142, 140,  80,  80, 112,  76,  28,  76,  64,  59,  65,  90, 104,
+        39,  35,  17,  81,  35,  39,  37,  16,  16,  16,  16,   5,   4,
+         5,  16,  16,   2,  15,   2,   5,  15,   5,   5,  16,   8,   5,
+         5,  16,  76,  76,  40,  40,  40,  56,  73,  36,  36,  61,  61,
+        28,  32,  34,  89,  43,  17,  26,  43,  47,  53,  28,  37,  56,
+        38,  55,  35,  39,  38,  65,   5,  16,   2,  16,   4,   5,   6,
+         5,   6,   6,  11,  11,   2,   6,   2,  16,   3,   6,   6,  16,
+         5,  16,  13,  19, 204,  26,  73,  56,  28,  27,  56,  73,  64,
+        64,  28,  33,  64,  89,  89,  17,  53,  78,  31,  90,  21,  55,
+        38,  35,  26,  35,  13,  55,   5,  16,   5,   6,   5,   5,  11,
+         5,   6,   6,   6,   5,   5,  15,   5,  15,   5,   5,   6,   5,
+         5,   5,  19,  76,  76,  19,  73,  33,  33,  33,  73,  73,  56,
+        56,  33,  73,  31,  28,  43,  28,  64,  43,  35,  35,  35,  38,
+        37,  46,  26,  24,  56,   5,  16,   5,   5,  16,  16,   5,   6,
+         0,   0,   0,   1,   0,   0,   0,   0,   0,  24,   1,   0,   0,
+         0,  40,   0,   0,  24,  24,   0,   0,  24,  24,  24,  24,  24,
+        24,   0,  91,   0,   0,   0,   0,  19,   0,  91,   0,   0,   4,
+         0,   0,   0,   0,   0,   0,   0,   1,   0,   0,   0,   0,   0,
+         0,   0,   0,   1,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,  24,   1,   0,   0,   0,  24,  24,  24,   1,   1,
+         1,   0,   0,   0,   0,   0,  26,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   1,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   1,   0,   0,   0,   1,   0,   0,   0,   0,
+         0,   0,  24,   0,   0,   0,   0,  24,  59,  24,  24,  24,  24,
+        19,   0,   0,   0,   1,   0,   0,  19,   0,   4,   4,   4,   4,
+         4,   0,   0,   0,   0,   0,   0,   0,   1,   0,   0,   1,   0],
+      dtype=int64)
+With standardize datasets
+E:\uni\tools and techniques\Project\
+from sklearn.tree import DecisionTreeClassifier
+clf = DecisionTreeClassifier(random_state=0,max_depth = 25)
+clf.fit(standardize_x_train,y_train)
+predict = clf.predict(standardize_x_test)
+testFile['total_cases'] = predict
+export_excel = testFile.to_csv(r'C:\Users\Shah Rukh\Downloads\submission_format.csv',index=None,header=True)
+print(predict)
+[  5   5   5   5   5   5  20  18  10  10  29  17   2  10  44 220  44 220
+  89  92  43  43  89 116 129  36  74  30  61  28  36  53  29  17  27  81
+  56  21  31  39  35  38  55  26  23  23  24  24  18  13  13  24  24   6
+  10  10  20  21  31  38  38  16  55  80  49  55  19  19  44  21  31  74
+  34 202  53  31  31  43  19  19  80  80  80  56  19  56  30  59  50  17
+  49  56  17  31  17  50  56  37   3   8   8   3  10   4  16  71  36  36
+  71  32  48  48  44 127  51  48  11 191  48 220 329  21  24  24  80  80
+ 127  48  29  76  42  32  17  17   6   3   2   0   1   3   6  10   7  14
+  20  20  20  20  12   5  12   6   4   8   8   4   8   8   6   4   3   3
+   3  18   1   2   7   7   7   7   7   7   7   7   3   7   7   7   7  25
+  39  39  34  34  30  34  34  37  12  13  13  13  10   1   8   9  20  19
+   6  11   6  10   7   3   3   3   7   3   3   7   3  10  10   7  10  10
+  34  14  14   4   6   6  33  14  14  10  14  11  36  11  14  17  20  10
+  14  14  20  21  20  20  22  17  13   6  26   7   8  10   9  19   5   6
+  11   2   3   1   3  15   4   3   0   0   0   1   0   0   0   0   0  24
+   0   0   0   0  24   0   0  24  24   0   0   2   2   3   2   2   2   0
+   0   0   0   0   0   0   0   0   0   0   4   0   0   0   0   0   0  37
+   1   0   1   6   1   2   1   1  10   4   0   0   2   9   3   3   9  23
+  29  63   0  32   5   4   3  17   4   2   1  28   1   2   7   0   0   0
+   4   0   7  12  11   6  12  12   2   3   9   1  13   3   5   6  37   2
+   4   4   6   7   2   4   2   1   3   0   2   5   6   1   0   2   9  18
+   2   6  17   0  83   5   5  15   2   1   4   7  28   3   1  20   4  20
+  26   6   1  11   6   5  12  21   3  10   1   5   4   9  26   3   3   0
+   0   1]
+With standardize datasets with increased hyperparameter
+E:\uni\tools and techniques\Project\
+from sklearn.tree import DecisionTreeClassifier
+clf = DecisionTreeClassifier(random_state=0,max_depth = 32)
+clf.fit(standardize_x_train,y_train)
+predict = clf.predict(standardize_x_test)
+testFile['total_cases'] = predict
+export_excel = testFile.to_csv(r'C:\Users\Shah Rukh\Downloads\submission_format.csv',index=None,header=True)
+print(predict)
+[  5   5   5   5   5   5  20  18  10  10  29  17   2  10  60  76  60  60
+  68  92  89  43  30 116  56  36  36  30  36  36  36  53  25  17  27  81
+  56  21  31  39  35  38  55  26  23  23  24  24  18  13  13  24  24   6
+  10  10  20  21  31  38  38  16  55  80  49  55 115 115  19  17  31 202
+  34  61  53  33  31  30  19  19  24  80  24  76  34  31  46  59  50  17
+  49  56  17  31  17  50  56  37   3   8   8   3  10   4  16  71  36  36
+  71  32 128  59  44 127  51  48  11 191  59  76  76 263  40  40  80  80
+ 127  48  33  33  42  32  17  17   6   3   2   1   0   3   5  10   7  14
+  20  20  20  20  18   5  18   6   4   8   8   4   8   8   4  19   4   3
+   3  18   1   1   4   4   4   4  10  10   7  10   3   7   7  10  10  56
+  39  31  17  31  30  34  31  26  19  19  13  13  22   8   6   9  20   9
+   6  11   6  10   7   3   3   3   7   3   3   7   2   1  10   7  10  11
+  17  14  14   4  12  12  16  14  14  19  14  11  36  11  14  17  40  15
+  14  14  20  21  40  10  26  19  17   6  22   7   8  22   9   9   5   8
+  11   2   3   1   3  15   8   3   0   0   0   1   0   0   0   0   0  24
+   0   0   0   0  40   0   0  24  24   0   0   2   2   3   2   2   2   0
+   0   0   0   0   0   0   0   0   0   0   1   0   0   0   0   0   0  37
+   1   0   1   6   1   2   1   1  10   4   0   0   2   9   3   3   9  23
+  29  63   0  32  22   4   3  17   4  15   1   7   1   2   7   0   0   0
+   4   0   5  12  11   6  12  12   2   3   9   1  13   3   5   6  37   2
+   4   4   6   7   2   4   2   1   3   0   2   5   6   1   0   2   9  18
+   2   6  17   0  83   5   5  15  16   1   4   7  28   3   1  20   4  20
+  26   5   1  11   6   4  12  21   3  10   1   5   4   9  26   3   3   0
+   0   1]
+from sklearn.tree import DecisionTreeClassifier
+clf = DecisionTreeClassifier(random_state=0,max_depth = 40)
+clf.fit(standardize_x_train,y_train)
+predict = clf.predict(standardize_x_test)
+testFile['total_cases'] = predict
+export_excel = testFile.to_csv(r'E:\uni\tools and techniques\Project\submission_format.csv',index=None,header=True)
+print(predict) // 28.5938
+[  5   5   5   5   5   5  20  18  10  10  29  17   2  10  60  76  60  60
+  68  92  89  43  30 116  92  36  36  30  36  36  36  53  25  17  27  81
+  56  21  31  39  35  38  55  26  23  23  24  24  18  13  13  24  24   6
+  10  10  20  21  31  38  38  16  55  80  49  55 115 115  19  17  33 202
+  34  61  53  33  33  30  19  19  80  80  80  31  34  31  46  59  50  17
+  49  56  17  31  17  50  56  37   3   8   8   3  10   4  16  71  36  36
+  71  32 128  59  44 127  51  48  11 191  59  76  76 263  40  40  80  80
+ 127  48  61  61  42  32  17  17   6   3   2   0   0   3   6  10   7  14
+  28  28  20  28  12   5  12   6   4   8   8   4   8   8   4   4   3   3
+   3  16   2   2   7   7   7   7   7   7   7   7   3   7   7   7   7  25
+  39  31  18  18  30  34  18  37  12  12  13  13  26   1   8  17  20  19
+   6  11   8  10   7   3   3   3   7   3   3   7   3   1  10   7  11  10
+  17  14  14  20  45  20  16  14  14  92  29  11  75  11  14  25  23  15
+  14  14  20  14   4  10  26  29  13  12  26   7  14  26   9  19   5   8
+   1   2   3   1   3  15   8   3   0   0   0   1   0   0   0   0   0  24
+   0   0   0   0  40   0   0  24  24   0   0   2   2   3   2   2   2   0
+   0   0   0   0   0   0   0   0   0   0   1   0   0   0   0   0   0  37
+   1   0   1   6   1   2   1   1  10   4   0   0   2   9   3   3   9  23
+  29  63   0  32   5   4   3  17   4   2   1   7   1   2   7   0   0   0
+   4   0  26  12  11   6  12  12   2   3   9   1  13   3   5   6  37   2
+   4   4   6   7   2   4   2   1   3   0   2   5   6   1   0   2   9  18
+   2   6  17   0  83   5   5  15   0   1  13   7   7   3   1  20   4  20
+  26  26   1  11   6   4   9  21   3  10   1   5   4   9  26   3   3   0
+   0   1]
+E:\uni\tools and techniques\Project\
+from sklearn.tree import DecisionTreeClassifier
+clf = DecisionTreeClassifier(random_state=0,max_depth = 100)
+clf.fit(standardize_x_train,y_train)
+predict = clf.predict(standardize_x_test)
+testFile['total_cases'] = predict
+export_excel = testFile.to_csv(r'C:\Users\Shah Rukh\Downloads\submission_format.csv',index=None,header=True)
+print(predict)
+[  5   5   5   5   5   5  20  18  10  10  29  17   2  10  60  76  60  60
+  68  92  89  43  30 116  92  36  36  30  36  36  36  53  25  17  27  81
+  56  21  31  39  35  38  55  26  23  23  24  24  18  13  13  24  24   6
+  10  10  20  21  31  38  38  16  55  80  49  55 115 115  19  17  33 202
+  34  61  53  33  33  30  19  19  80  80  80  31  34  31  46  59  50  17
+  49  56  17  31  17  50  56  37   3   8   8   3  10   4  16  71  36  36
+  71  32 128  59  44 127  51  48  11 191  59  76  76 263  40  40  80  80
+ 127  48  61  61  42  32  17  17   6   3   2   0   0   3   6  10   7  14
+  28  28  20  28  12   5  12   6   4   8   8   4   8   8   4   4   3   3
+   3  16   2   2   7   7   7   7   7   7   7   7   3   7   7   7   7  25
+  39  31  18  18  30  34  18  37  12  12  13  13  26   1   8  17  20  19
+   6  11   8  10   7   3   3   3   7   3   3   7   3   1  10   7  11  10
+  17  14  14  20  45  20  16  14  14  92  29  11  75  11  14  25  23  15
+  14  14  20  14   4  10  26  29  13  12  26   7  14  26   9  19   5   8
+   1   2   3   1   3  15   8   3   0   0   0   1   0   0   0   0   0  24
+   0   0   0   0  40   0   0  24  24   0   0   2   2   3   2   2   2   0
+   0   0   0   0   0   0   0   0   0   0   1   0   0   0   0   0   0  37
+   1   0   1   6   1   2   1   1  10   4   0   0   2   9   3   3   9  23
+  29  63   0  32   5   4   3  17   4   2   1   7   1   2   7   0   0   0
+   4   0  26  12  11   6  12  12   2   3   9   1  13   3   5   6  37   2
+   4   4   6   7   2   4   2   1   3   0   2   5   6   1   0   2   9  18
+   2   6  17   0  83   5   5  15   0   1  13   7   7   3   1  20   4  20
+  26  26   1  11   6   4   9  21   3  10   1   5   4   9  26   3   3   0
+   0   1]
+DECISION TREE REGRESSOR
+With standardize datasets
+E:\uni\tools and techniques\Project\
+from sklearn.tree import DecisionTreeRegressor
+clf = DecisionTreeRegressor(random_state=0,max_depth = 100)
+clf.fit(standardize_x_train,y_train)
+predict = clf.predict(standardize_x_test)
+predict = predict.astype('int64')
+testFile['total_cases'] = predict
+export_excel = testFile.to_csv(r'C:\Users\Shah Rukh\Downloads\submission_format.csv',index=None,header=True)
+print(predict) ##28.5938
+[ 10   4  10   6  10   4   4  18  17  14  17  21  17  14  64 142  92  60
+  76  92  25  52 179 140 140 140 116 140 140 129  47 108  89  44  74  81
+  37  31  35  31  26  20  33  59  59  21  16  16  21  24  13  24  25  17
+  22  22  22  19  31  17  49  55  49  55  84  84 154 202 202 154  31  19
+  31  33  19  47  42  25  34  21  21  36  59  23  21  24  19  59  50  63
+ 104  65  35  53  29  26  32  34  26  26  26  26  32  34  26  26  26  44
+  44  46  51  44 102  71 128 127 150 256 128 181 329 179  30  13  56  14
+   8  61  61  65   9  55   9   9   9  17  16   9   9  35  16  16  11  28
+  20  18  13  17   3   3   3   6   3   7   7  12   7  10   3  10   5  10
+   5  16   4   6   8  10   4   6   6  25   2  16   3   3  56  14   4  56
+  22  22   7  16  22  12   4  15  19  19  12  34  15  15  15  17  17  17
+  15  21  15   1   4   2   3   3   7   6   3  10   3  10  10   5  11  10
+  10   6   4  13   2   7   5   6  43  56  14  10  34  34  16  43  20  20
+   7 170  21  10  20  29  26  13  29   8   8   8   5  11   1   1   8   8
+   1   0   1   4   3   7   5   1  56 150 150 150 150 150  47  20  44  21
+  21  21  21  21   2   0   0   0   0   0   0   0   0   0   0   0  27  14
+  11  11  23  11  11  11   6   7  11   9  22   2   3  12   5   6  11   3
+   6   6  10   7   8   7   7   2   6   6   4   2   7   1   0   0   1   4
+   2   2   6   2   3  35   3   7  27   1   6   1   7  27   9   7   2  11
+  11   3   7  18   6   7   5   3   5   9   3   5   5   8   0   8   5   4
+   5   2   8   5   3   6   6   3   6   5   5   5   5   2   0   0   2   5
+   0   4   0  11   3   0   3  26   2   6   0  11  35  29  24  10  38  12
+  12  20  39   3   2   9   9   2   3   5   3   5   0   3   1   0   0   0
+   0   4]
+ADABOOST CLASSIFIER
+Without standardize datasets
+E:\uni\tools and techniques\Project\
+from sklearn.ensemble import AdaBoostClassifier
+abc = AdaBoostClassifier(n_estimators=10, random_state=1)
+abc.fit(x_train, y_train)
+predict = abc.predict(x_test)
+testFile['total_cases'] = predict
+export_excel = testFile.to_csv(r'C:\Users\Shah Rukh\Downloads\submission_format.csv',index=None,header=True)
+print(predict)
+array([  6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,
+         6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,
+         6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,
+         6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,
+         6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,
+         6,   6,   6,   6,   6,   6,   6,   6,   6,   6,  15,   6,   6,
+         6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,
+         6,   6,   6,   6,   6,   6,   0,   6,   6,   6,   6,   6,   6,
+         6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,
+         6,   6,   6,   6,   6, 106, 106,   6,   6,   6,   6,   6,   6,
+         6,   6,   6,   6,   6,   6,   6,   6,   6,   6,  73,   6,   6,
+         6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,
+         6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,
+         6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,
+         6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,
+         6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,
+         6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,
+         6,   6,   6,   6,   6,   6,   6,   6,   6, 106,   6,   6,   6,
+         6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,
+         6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   6,   0,   0,   0,
+         0, 106,   0,   0,   6,   6,   0,   0,   6,   6,   6,   6,   6,
+         6,   0,   6,   0,   0,   0,   0,   6,   0,   6,   0,   0,   6,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   6,   0,   0,   0,   0,   6,   6,   6,   0,   0,
+         0,   0,   0,   0,   0,   0,   6,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+         0,   0,   6,   0,   0,   0,   0,   6,   6,   6,   6,   6,   6,
+         6,   0,   0,   0,   0,   0,   0,   6,   0,   6,   6,   6,   6,
+         6,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0],
+      dtype=int64)
+With standardize datasets
+E:\uni\tools and techniques\Project\
+from sklearn.ensemble import AdaBoostClassifier
+abc = AdaBoostClassifier(n_estimators=30, random_state=1)
+abc.fit(standardize_x_train, y_train)
+predict = abc.predict(standardize_x_test)
+testFile['total_cases'] = predict
+export_excel = testFile.to_csv(r'C:\Users\Shah Rukh\Downloads\submission_format.csv',index=None,header=True)
+print(predict)
+[ 6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6
+  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6 23  6  6
+  6  6  6  6  6  6 73 23  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6
+  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6
+  6  0  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6
+  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6 73  6  6  6
+  6  6  6  6  6  6  6  6  6  6  6  6  6 23  6  6  6 23 23  6  6  6 23 23
+  6  6  6  6  6 23  6  6  6  6  6  6  6  6  6  6  6  6  6  6 23 73  6  6
+  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6 23  6  6  6  6  6
+  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6  6
+  6  6  6  6  6 23  6  6  6  6  6  6  6  6  6  6  6  6  6  6  0  0  0  0
+  0  0  0  0  0  6  0  0  0  0 82  0  0  6  6  0  0  6  6  6  6  6  6  0
+  6  0  0  0  0  6  0  6  0  0  6  0  0  0  0  0  0  0  0  0  0  0  0  0
+  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  6  0  0  0  6  6  6  6
+  0  0  6  0  0  0  0  0  6  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  6  0  0  0  0
+  6  6  6  6  6  6  6  0  0  0  0  0  0  6  0  6  6  6  6  6  0  6  0  0
+  0  0  0  0  0  0  0  0]
+KNEIGHBORS REGRESSOR
+Without standardize datasets
+E:\uni\tools and techniques\Project\
+from sklearn.linear_model import LinearRegression
+from sklearn.neighbors import KNeighborsRegressor
+linearRegression = KNeighborsRegressor(n_neighbors=12)
+linearRegression.fit(x_train,y_train)
+predict = linearRegression.predict(x_test)
+predict = predict.astype('int64')
+testFile['total_cases'] = predict
+export_excel = testFile.to_csv(r'C:\Users\Shah Rukh\Downloads\submission_format.csv',index=None,header=True)
+print(predict)
+[ 19   7  13  18  13  21  20  22  11  22  13  22  17  23  23  20  21  23
+  23  42  23  50  23  23  23  44  25  24  30  27  29  26  30  29  34  17
+  21  21  18  22  21  14  18  21  47  17  22  19  21  21  20  18  17  17
+  27  66  56  27  29  36  41  30  40  44  52  43  54  48  44  68  61  70
+  62  54  48  57  74  77  70  76  57  53  41  69  73  72  70  64  47  42
+  43  46  46  46  46  41  46  65  61  46  46  40  46  59  43  41  48  57
+  44  28  43  45  43  35  70  44  31  46  40  49  42  43  43  40  35  39
+  43  51  36  37  31  40  33  38  33  30  30  42  41  31  16  17  17  18
+  18  18  17  17  16  15  18  18  15  17  17  15  17  26  13  48  48  37
+  25  45  24  40  34  18  27  32  27  34  22  24  24  21  25  60  29  29
+  40  27  34  29  85  35  29  31  92  46  29  39  27  28  27  29  27  27
+  26  28  27  24  26 113  66 166  33 150  25  29 169  70  60  37  70  70
+  59  70  78 181  99 199 122 186 184  84 173 123 117 132 125 171 151 252
+ 198 139 142 186 114 221 157 135 169  46  27  28  21  21  29  27  20  20
+  19  20  20  25  57  20  27  92  49  38  41  43  43  48  42  42  38  43
+  42  34  42  40  33  44  40  42  49  38  35  40  43  27  42  48  61  16
+  34  31  30  31  30  51  43  28  28  30  28  30  27  28  27  24  24  34
+  54  31  18  63  48  26  24  22  17  37  31  23  27  18  20  21  21  47
+  45  43  59  24  37  61  25  77  45  47  72 111  98  69  66  61  41  48
+  75  99  44  47  67  65  48  99  57  47  69  67  37 117 160 102 146 123
+ 185  50 182  55  42  87 153  61  67  67 140  93 213 194 137 156 152 222
+ 201 177 185 217 250 155 143 176 211 250 141 152 109 168 165 109 143  67
+  49  56 119  64  90 116  65  68 102  80  74  20  79  85  57  77  75  42
+  17  49]
+With standardize datasets
+E:\uni\tools and techniques\Project\
+from sklearn.linear_model import LinearRegression
+from sklearn.neighbors import KNeighborsRegressor
+linearRegression = KNeighborsRegressor(n_neighbors=15)
+linearRegression.fit(standardize_x_train,y_train)
+predict = linearRegression.predict(standardize_x_test)
+predict = predict.astype('int64')
+testFile['total_cases'] = predict
+export_excel = testFile.to_csv(r'C:\Users\Shah Rukh\Downloads\submission_format.csv',index=None,header=True)
+print(predict) // 29.3293
+[ 18  19  16  28  22  37  21  31  41  41  38  59  22  44  72  46  59  41
+  50  57  72  51 107  65 124  64  79  49  93 116 117  49  69  75  42  22
+  26  27  21  25  22  19  22  23  20  24  25  27  24  18  21  18  21  23
+  17  19  40  29  23  27  40  56  45  41  59  43  77  56  64  71  41  58
+  48  79  94  79  56  40 135  79  70  44 126 115  45  95  65 136  28  26
+  17  26  22  24  21  20  16  18  27  11  15  19  18  15  22  17  13  29
+  14  50  84  34  52  56  83  98  50  38  56  69  59  87  56  54  43  47
+  35  35  44  26  36  39  60  31  17  26  22  28  21  22  17  23  16  18
+  19  17  18  21  20  16  19  14  16  17  13  12  12   8  10  21  28  31
+  14  45  17  29  27  14  30  24  25  35  23  47  63  19  45  30  40  34
+  23  20  18  26  31  24  30  28  15  27  19  21  16  14  11  11  11  13
+   6  11  10  11   9   9  12   7   8   8   9   9   4   9   6   9  22  24
+  32  26  16  34  28  21  21  27  46  32  42  36  45  43  36  44  29  28
+  34  33  40  27  16  19  23  16  19   9   9   5   7   9   7   9   6   5
+   8   6   6   7   8   9   8   6   7   2   6   3   3   2   2   4   3   3
+  11   1   4   3  10   1   9  12   8   5   6  10  11   9  10   4  15   7
+   4   3   7   5   5   7  10   6   7   5  10   7   6   4   7   6   7   3
+   5   6   4   4  11   3   2   2   2   1   4   2   2   2   3   3   4  11
+   8  20   5  13  14   5   7   9  11  11  11  14  19  17  10   9  11  10
+   4   8   7   8  12   8   8   4   4  11   7  10   8   5   6   3   6   4
+   3   3   3   3   5   3   4   3   2   2   3   2   5   7   3   3   2   5
+   4  13   8  20   9   8  13  18  16  11   8  10   8   4   5  13  11  10
+  12   9   9  10   6   7  13  13  11   6   6   3   6   8   9   3   5   5
+   2   3]
